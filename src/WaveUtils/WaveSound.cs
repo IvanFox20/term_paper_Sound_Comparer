@@ -541,7 +541,6 @@ namespace SoundComparer.WaveUtils
         public float Compare(WaveSound wf)
         {
             int nbcorrect = 0;
-            int i = 0;
             bool endfile = false;
             float[] frames = new float[nbframe > wf.nbframe ? nbframe : wf.nbframe];
             comparedFrame = nbframe < wf.nbframe ? nbframe : wf.nbframe;
@@ -549,103 +548,76 @@ namespace SoundComparer.WaveUtils
             int step = 0;
             if (ProgressBar.Value != MAX_PROGRESS) step = (MAX_PROGRESS - ProgressBar.Value) / comparedFrame;
             List<int> aFile = new List<int>();
-            List<int> bFile = new List<int>();
             int correctCount = 0;
+            int countA = 0;
             // Open FFT file
+            int founded = 0;
+            List<float> correctFrames = new List<float>();
             using (BinaryReader f1 = new BinaryReader(File.Open(filename + ".fft.dat", FileMode.Open)))
             using (BinaryReader f2 = new BinaryReader(File.Open(wf.filename + ".fft.dat", FileMode.Open)))
             using (StreamWriter sw2 = new StreamWriter(wf.filename + ".fft.txt"))
             {
+                List<int> framesB = GetNextFrames(1, f2);
                 try
                 {
-                    while (true)
+                    List<int> firstFrameA = GetNextFrames(1, f1);
+                    while (f1.BaseStream.Position < f1.BaseStream.Length - 1)
                     {
-                        int a = f1.ReadInt16();
-                        aFile.Add(a); // Добавляем данные в список
-                    }
-                }
-                catch (EndOfStreamException)
-                {
-                    // Достигнут конец файла
-                }
-
-                // Читаем маленький файл (шаблон) в память
-                try
-                {
-                    while (true)
-                    {
-                        int b = f2.ReadInt16();
-                        bFile.Add(b); // Добавляем данные в список
-                    }
-                }
-                catch (EndOfStreamException)
-                {
-                    // Достигнут конец файла
-                }
-                int slidingOffset = 0;
-                int bIndex = 0;
-                try
-                {
-                    for (slidingOffset = 0; slidingOffset <= aFile.Count - bFile.Count; slidingOffset++)
-                    {
-                        i = 0;
-                        // Сравниваем текущий блок из большого файла с маленьким файлом
-                        for (bIndex = 0; bIndex < bFile.Count; bIndex++)
+                        List<int> secondFrameA = GetNextFrames(1, f1);
+                        bool breakFlag = false;
+                        countA++;
+                        List<int> framesA = new List<int>();
+                        framesA.AddRange(firstFrameA);
+                        framesA.AddRange(secondFrameA);
+                        for(int i = 0; i < firstFrameA.Count;i++)
                         {
-                            int a = aFile[slidingOffset + bIndex];
-                            int b = bFile[bIndex];
-                            if (a == -9999 || b == -9999)
+                            nbcorrect = 0;
+                            for (int j = 0; j < framesB.Count && !breakFlag; j++)
                             {
-                                // Calculate the value for 1 frame
-                                frames[i] = (float)nbcorrect / (fftPoint / 2);
-                                ProgressBar.Value += step;
-                                i++;
-                                nbcorrect = 0;
-                            }
-                            else
-                            {
-                                i = 0;
-                                if (Math.Abs(a - b) <= 10) // смещение точности
+                                if (Math.Abs(framesA[i + j] - framesB[j]) <= 10) // смещение точности
                                 {
                                     nbcorrect++;
                                 }
                             }
-                        }
-                        nbcorrect = 0;
-                        int idx = 0;
-                        int len = comparedFrame;
-                        comparedFrame = 0;
-
-                        for (i = 0; i < len; i++)
-                        {
-                            nbcorrect += frames[i] >= 0.7 ? 1 : 0;
-                            if (frames[i] < 0.7)
-                            {
-                                MissPlay[idx] = (short)i;
-                                idx = idx + 1;
-                                comparedFrame++;
+                            correctFrames.Add((float)nbcorrect / (fftPoint / 2));
+                            if((float)nbcorrect / (fftPoint / 2) >= 0.7)
+                            { //Добавить сравнение дальше!!!!!!!!
+                                founded++;
+                                break;
                             }
                         }
-                        for (i = 0; i < comparedFrame; i++)
-                            missData = missData + MissPlay[i] + ";";
-                        if ((float)(nbcorrect * 100 / frames.Length) > 70)
-                        {
-                            correctCount++;
-                            slidingOffset += bFile.Count;
-                        }
+                        firstFrameA = secondFrameA;
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-
+                    
                 }
                 f1.Close();
                 f2.Close();
                 sw2.Close();
-
             }
-
-            return correctCount;
+            return founded;
+        }
+        List<int> GetNextFrames(int count, BinaryReader reader)
+        {
+            List<int> frames = new List<int>();
+            for(int i = 0; i < count;i++)
+            {
+                frames.AddRange(GetNextFrame(reader));
+            }
+            return frames;
+        }
+        List<int> GetNextFrame(BinaryReader reader)
+        {
+            List<int> frame = new List<int>();
+            int coef = reader.ReadInt16();
+            while (coef != -9999 && reader.BaseStream.Position < reader.BaseStream.Length - 1)
+            {
+                frame.Add(coef);
+                coef = reader.ReadInt16();
+            }
+            return frame;
         }
         /// <summary>Applying FFT</summary>
         /// <param name="data">The data that needs to be processed through FFT processor</param> 
