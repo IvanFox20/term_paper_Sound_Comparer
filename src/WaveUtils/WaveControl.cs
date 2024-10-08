@@ -4,60 +4,59 @@ using System.Windows.Forms;
 
 namespace SoundComparer.WaveUtils
 {
-	/// <summary>
-	/// Summary description for WaveControl.
-	/// </summary>
-	public class WaveControl : System.Windows.Forms.UserControl
+    /// <summary>
+    /// Класс для управления визуализацией WAV-файлов.
+    /// </summary>
+    public class WaveControl : System.Windows.Forms.UserControl
     {
         #region Members
 
         /// <summary> 
-		/// Required designer variable.
-		/// </summary>
-		private System.ComponentModel.Container components = null;
+        /// Необходимая переменная для поддержки дизайнера.
+        /// </summary>
+        private System.ComponentModel.Container components = null;
 
-		/// <summary>
-		/// This is the WaveFile class variable that describes the internal structures of the .WAV
-		/// </summary>
-		//private WaveFile		m_Wavefile;
+        /// <summary>
+        /// Переменная класса WaveFile, описывающая внутренние структуры .WAV.
+        /// </summary>
         private WaveSound m_Wavefile;
 
-		/// <summary>
-		/// Boolean for whether the .WAV should draw or not.  So that the control doesnot draw the .WAV until after it is read
-		/// </summary>
-		private bool m_DrawWave = false;
+        /// <summary>
+        /// Логическое значение, указывающее, нужно ли рисовать .WAV. Контрол не рисует .WAV до тех пор, пока он не будет прочитан.
+        /// </summary>
+        private bool m_DrawWave = false;
 
-		/// <summary>
-		/// Filename string
-		/// </summary>
-		//private string			m_Filename;
+        /// <summary>
+        /// Строка с именем файла.
+        /// </summary>
+        //private string			m_Filename;
 
-		/// <summary>
-		/// Each pixel value (X direction) represents this many samples in the wavefile
-		/// Starting value is based on control width so that the .WAV will cover the entire width.
-		/// </summary>
-		private float m_SamplesPerPixel = 0f;
+        /// <summary>
+        /// Каждое значение пикселя (по оси X) представляет это количество выборок в WAV-файле.
+        /// Начальное значение основано на ширине управления, чтобы .WAV охватывал всю ширину.
+        /// </summary>
+        private float m_SamplesPerPixel = 0f;
 
-		/// <summary>
-		/// This value is the amount to increase/decrease the m_SamplesPerPixel.  This creates a 'Zoom' affect.
-		/// Starting value is m_SamplesPerPixel / 25    so that it is scaled for the size of the .WAV
-		/// </summary>
-		private float m_ZoomFactor;
+        /// <summary>
+        /// Значение, определяющее, насколько увеличивается или уменьшается m_SamplesPerPixel. Это создает эффект "увеличения".
+        /// Начальное значение - m_SamplesPerPixel / 25, чтобы оно было пропорционально размеру .WAV.
+        /// </summary>
+        private float m_ZoomFactor;
 
-		/// <summary>
-		/// This is the starting x value of a mouse drag
-		/// </summary>
-		private int	m_StartX = 0;
+        /// <summary>
+        /// Начальное значение по оси X для перетаскивания мышью.
+        /// </summary>
+        private int m_StartX = 0;
 
-		/// <summary>
-		/// This is the ending x value of a mouse drag
-		/// </summary>
-		private int	m_EndX = 0;
-        
-		/// <summary>
-		/// Offset from the beginning of the wave for where to start drawing
-		/// </summary>
-		private int	m_OffsetInSamples = 0;
+        /// <summary>
+        /// Конечное значение по оси X для перетаскивания мышью.
+        /// </summary>
+        private int m_EndX = 0;
+
+        /// <summary>
+        /// Смещение от начала волны, где начинается рисование.
+        /// </summary>
+        private int m_OffsetInSamples = 0;
 
         #endregion // Members
 
@@ -73,32 +72,32 @@ namespace SoundComparer.WaveUtils
             get { return m_Wavefile; }
         }
 
-		private float SamplesPerPixel
-		{
-			set
-			{
-				m_SamplesPerPixel = value;
-				m_ZoomFactor = m_SamplesPerPixel / 25;
-			}
-		}
+        private float SamplesPerPixel
+        {
+            set
+            {
+                m_SamplesPerPixel = value;
+                m_ZoomFactor = m_SamplesPerPixel / 25;
+            }
+        }
 
         #endregion // Properties
 
         #region Constructor
 
         public WaveControl()
-		{
-			// This call is required by the Windows.Forms Form Designer.
-			InitializeComponent();
-		}
+        {
+            // Этот вызов необходим для конструктора форм Windows.
+            InitializeComponent();
+        }
 
         #endregion // Constructor
 
         #region Component Designer generated code
 
         /// <summary> 
-        /// Required method for Designer support - do not modify 
-        /// the contents of this method with the code editor.
+        /// Необходимый метод для поддержки конструктора - не изменяйте 
+        /// содержимое этого метода с помощью редактора кода.
         /// </summary>
         private void InitializeComponent()
         {
@@ -116,7 +115,7 @@ namespace SoundComparer.WaveUtils
         }
 
         /// <summary> 
-        /// Clean up any resources being used.
+        /// Освобождает любые используемые ресурсы.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
@@ -134,84 +133,109 @@ namespace SoundComparer.WaveUtils
 
         #region Wave Drawing
 
-        public void Read(WaveControl wc, string filename, ProgressBar progress )
-		{
+        /// <summary>
+        /// Читает WAV-файл и устанавливает флаг для рисования волны.
+        /// </summary>
+        /// <param name="wc">Контрол, в который будет загружен WAV-файл.</param>
+        /// <param name="filename">Имя файла для чтения.</param>
+        /// <param name="progress">Полоса прогресса для отображения состояния загрузки.</param>
+        public void Read(WaveControl wc, string filename, ProgressBar progress)
+        {
             m_Wavefile = new WaveSound(filename, wc, progress);
             m_Wavefile.ReadWavFile();
             m_DrawWave = true;
-		}
+        }
 
+        /// <summary>
+        /// Переопределяет фон рисования, чтобы избежать нежелательного мерцания.
+        /// </summary>
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            // Left empty, avoids undesirable flickering
+            // Оставлено пустым, чтобы избежать нежелательного мерцания
         }
 
-		private void Draw( PaintEventArgs pea, Pen pen )
-		{
-			Graphics grfx = pea.Graphics;
+        /// <summary>
+        /// Рисует волну на графическом контексте.
+        /// </summary>
+        /// <param name="pea">Аргументы рисования.</param>
+        /// <param name="pen">Карандаш для рисования.</param>
+        private void Draw(PaintEventArgs pea, Pen pen)
+        {
+            Graphics grfx = pea.Graphics;
             Rectangle visBounds = ClientRectangle;
 
-			if ( m_SamplesPerPixel == 0.0 )
-			{
+            if (m_SamplesPerPixel == 0.0)
+            {
                 this.SamplesPerPixel = (m_Wavefile.Samples.Length / visBounds.Width);
-			}
+            }
 
             grfx.DrawLine(pen, 0, (int)visBounds.Height / 2, (int)visBounds.Width, (int)visBounds.Height / 2);
-            Draw16Bit( grfx, pen, visBounds );
-		}
-
-		private void Draw16Bit( Graphics grfx, Pen pen, RectangleF visBounds )
-		{
-			int prevX = 0;
-			int prevY = 0;
-
-			int i = 0;			
-			int index = m_OffsetInSamples; // index is how far to offset into the data array
-            int maxSampleToShow = (int) (( m_SamplesPerPixel * visBounds.Width ) + m_OffsetInSamples);
-            
-            maxSampleToShow = Math.Min(maxSampleToShow, m_Wavefile.Samples.Length);
-			while ( index < maxSampleToShow )
-			{
-				short maxVal = -32767;
-				short minVal = 32767;
-
-				// Finds the max & min peaks for this pixel 
-				for ( int x = 0; x < m_SamplesPerPixel; x++ )
-				{
-                    maxVal = Math.Max( maxVal, m_Wavefile.Samples[ x + index ] );
-					minVal = Math.Min( minVal, m_Wavefile.Samples[ x + index ] );
-				}
-
-				// Scales based on height of window
-				int scaledMinVal = (int) (( (minVal + 32768) * visBounds.Height ) / 65536 );
-				int scaledMaxVal = (int) (( (maxVal + 32768) * visBounds.Height ) / 65536 );
-
-				//  If samples per pixel is small or less than zero, we are out of zoom range, so don't display anything
-				if ( m_SamplesPerPixel > 0.0000000001 )
-				{
-					// If the max/min are the same, then draw a line from the previous position,
-					// otherwise we will not see anything
-					if ( scaledMinVal == scaledMaxVal )
-					{
-						if ( prevY != 0 )
-							grfx.DrawLine( pen, prevX, prevY, i, scaledMaxVal );
-					}
-					else
-					{
-						grfx.DrawLine( pen, i, scaledMinVal, i, scaledMaxVal );
-					}
-				}
-				else
-					return;
-
-				prevX = i;
-				prevY = scaledMaxVal;
-				
-				i++;
-				index = (int) ( i * m_SamplesPerPixel) + m_OffsetInSamples;
-			}
+            Draw16Bit(grfx, pen, visBounds);
         }
 
+        /// <summary>
+        /// Рисует 16-битные образцы WAV-файла.
+        /// </summary>
+        /// <param name="grfx">Графический контекст.</param>
+        /// <param name="pen">Карандаш для рисования.</param>
+        /// <param name="visBounds">Область видимости.</param>
+        private void Draw16Bit(Graphics grfx, Pen pen, RectangleF visBounds)
+        {
+            int prevX = 0;
+            int prevY = 0;
+
+            int i = 0;
+            int index = m_OffsetInSamples; // индекс для смещения в массиве данных
+            int maxSampleToShow = (int)((m_SamplesPerPixel * visBounds.Width) + m_OffsetInSamples);
+
+            maxSampleToShow = Math.Min(maxSampleToShow, m_Wavefile.Samples.Length);
+            while (index < maxSampleToShow)
+            {
+                short maxVal = -32767;
+                short minVal = 32767;
+
+                // Находит максимальные и минимальные пики для этого пикселя 
+                for (int x = 0; x < m_SamplesPerPixel; x++)
+                {
+                    maxVal = Math.Max(maxVal, m_Wavefile.Samples[x + index]);
+                    minVal = Math.Min(minVal, m_Wavefile.Samples[x + index]);
+                }
+
+                // Масштабирование по высоте окна
+                int scaledMinVal = (int)(((minVal + 32768) * visBounds.Height) / 65536);
+                int scaledMaxVal = (int)(((maxVal + 32768) * visBounds.Height) / 65536);
+
+                // Если количество образцов на пиксель маленькое или меньше нуля, мы выходим за пределы диапазона увеличения, поэтому ничего не отображаем
+                if (m_SamplesPerPixel > 0.0000000001)
+                {
+                    // Если max/min одинаковы, нарисуйте линию от предыдущей позиции,
+                    // в противном случае мы ничего не увидим
+                    if (scaledMinVal == scaledMaxVal)
+                    {
+                        if (prevY != 0)
+                            grfx.DrawLine(pen, prevX, prevY, i, scaledMaxVal);
+                    }
+                    else
+                    {
+                        grfx.DrawLine(pen, i, scaledMinVal, i, scaledMaxVal);
+                    }
+                }
+                else
+                    return;
+
+                prevX = i;
+                prevY = scaledMaxVal;
+
+                i++;
+                index = (int)(i * m_SamplesPerPixel) + m_OffsetInSamples;
+            }
+        }
+
+        /// <summary>
+        /// Обработчик события рисования для контроля волн.
+        /// </summary>
+        /// <param name="sender">Объект, вызвавший событие.</param>
+        /// <param name="e">Аргументы события рисования.</param>
         private void WaveControl_Paint(object sender, PaintEventArgs e)
         {
             Pen pen = new Pen(Color.Black);

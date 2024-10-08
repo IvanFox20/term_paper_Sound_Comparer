@@ -3,34 +3,32 @@ using System;
 namespace SoundComparer.DigitalFilter
 {
     /// <summary>
-    /// Helper class which implements the various window functions for determination of the filter
-    /// coefficients.
+    /// Вспомогательный класс, который реализует различные оконные функции для определения коэффициентов фильтра.
     /// </summary>
     class FFT
     {
         #region Members
 
         /// <summary>
-        /// Filter type enumeration for identification of what type of filter we want coefficients
-        /// for.
+        /// Перечисление типов фильтров для идентификации типа фильтра, для которого нам нужны коэффициенты.
         /// </summary>
         public enum FilterType { HighPass, LowPass, BandPass };
 
         /// <summary>
-        /// Algorithm enumeration for choice of algorithm
+        /// Перечисление алгоритмов для выбора алгоритма.
         /// </summary>
         public enum Algorithm { Kaiser, Hann, Hamming, Blackman, Rectangular };
 
-        private float myRate;
-        private float myFreqFrom;
-        private float myFreqTo;
-        private float myAttenuation;
-        private float myBand;
-        private float myAlpha;
-        private int myOrder;
+        private float myRate;  // Частота дискретизации
+        private float myFreqFrom;  // Начальная частота полосы пропускания
+        private float myFreqTo;  // Конечная частота полосы пропускания
+        private float myAttenuation;  // Ослабление в полосе подавления
+        private float myBand;  // Полоса перехода
+        private float myAlpha;  // Альфа для алгоритма Кайзера
+        private int myOrder;  // Порядок фильтра
 
         /// <summary>
-        /// Shannon sampling frequency
+        /// Частота дискретизации по Шеннону (половина частоты дискретизации)
         /// </summary>
         private float myFS;
 
@@ -39,7 +37,7 @@ namespace SoundComparer.DigitalFilter
         #region Properties
 
         /// <summary>
-        /// Sampling rate
+        /// Частота дискретизации.
         /// </summary>
         public float Rate
         {
@@ -47,12 +45,12 @@ namespace SoundComparer.DigitalFilter
             set
             {
                 myRate = value;
-                myFS = 0.5f * myRate;
+                myFS = 0.5f * myRate;  // Установка частоты Шеннона
             }
         }
 
         /// <summary>
-        /// Starting frequency for passband. Must be lower than the ending frequency.
+        /// Начальная частота полосы пропускания. Должна быть меньше конечной частоты.
         /// </summary>
         public float FreqFrom
         {
@@ -61,7 +59,7 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Ending frequency for passband. Must be higher than the starting frequency.
+        /// Конечная частота полосы пропускания. Должна быть больше начальной частоты.
         /// </summary>
         public float FreqTo
         {
@@ -70,7 +68,7 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Stopband attenuation.
+        /// Ослабление в полосе подавления.
         /// </summary>
         public float StopBandAttenuation
         {
@@ -79,7 +77,7 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Transition band.
+        /// Полоса перехода.
         /// </summary>
         public float TransitionBand
         {
@@ -88,7 +86,7 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Alpha value used for the Kaiser algorithm.
+        /// Значение альфа, используемое для алгоритма Кайзера.
         /// </summary>
         public float Alpha
         {
@@ -97,7 +95,7 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Filter order. Must be an even number.
+        /// Порядок фильтра. Должен быть четным числом.
         /// </summary>
         public int Order
         {
@@ -110,23 +108,23 @@ namespace SoundComparer.DigitalFilter
         #region Constructors
 
         /// <summary>
-        /// Construct a FFT instance and initialize with default values.
+        /// Конструктор для создания экземпляра FFT и инициализации значениями по умолчанию.
         /// </summary>
         public FFT()
         {
-            // Default rate to 8000
+            // Частота по умолчанию 8000 Гц
             Rate = 11025;
 
-            // Default attenuation to 60db
+            // Ослабление по умолчанию 60 дБ
             this.myAttenuation = 60;
 
-            // Default transition band to 500hz
+            // Полоса перехода по умолчанию 500 Гц
             this.myBand = 500;
 
-            // Default order to 0 so that we'll know if it was changed by the user or not
+            // Порядок фильтра по умолчанию 0, чтобы знать, был ли он изменен пользователем
             this.myOrder = 0;
 
-            // Default Alpha to 4
+            // Альфа по умолчанию 4
             this.myAlpha = 4;
         }
 
@@ -135,20 +133,16 @@ namespace SoundComparer.DigitalFilter
         #region Mathematical Functions
 
         /// <summary>
-        /// Bessel is the zeroth order Bessel function which is used in the Kaiser window.
-        /// This is a polynomial approximation of the zeroth order modified Bessel function found in:
-        /// W.H. Press, B.P. Flannery, S.A. Teukolsky, and W.T. Vetterling.
-        /// Numerical Recipes in C: The Art of Scientific Computing.
-        /// Cambridge UP, 1988.
-        /// P. 237
+        /// Функция Бесселя нулевого порядка, которая используется в окне Кайзера.
+        /// Это полиномиальная аппроксимация модифицированной функции Бесселя нулевого порядка.
         /// </summary>
-        /// <param name="x">Input number which the Bessel will be performed on</param>
+        /// <param name="x">Число, для которого будет рассчитана функция Бесселя</param>
         private float Bessel(float x)
         {
             double ax, ans;
             double y;
 
-            ax = System.Math.Abs(x);
+            ax = System.Math.Abs(x);  // Модуль числа
             if (ax < 3.75)
             {
                 y = x / 3.75;
@@ -173,94 +167,94 @@ namespace SoundComparer.DigitalFilter
         #region Generate Coefficients
 
         /// <summary>
-        /// Calculate the coefficients to be used by the filter function.
+        /// Вычисление коэффициентов, используемых фильтром.
         /// </summary>
-        /// <param name="filterType">Enum type which specifies the filter to be performed.</param>
-        /// <param name="alg">Enum type which specifies which algorithm to be used for the window algorithm.</param>
+        /// <param name="filterType">Перечисление типа фильтра, который будет применяться.</param>
+        /// <param name="alg">Перечисление алгоритма, который будет использоваться для оконного алгоритма.</param>
         public float[] GenerateCoefficients(FilterType filterType, Algorithm alg)
         {
-            // Calculate order if it hasn't been set
+            // Рассчитываем порядок фильтра, если он не был установлен
             if (this.myOrder == 0)
                 this.myOrder = (int)(((this.myAttenuation - 7.95f) / (this.myBand * 14.36f / this.myFS) + 1.0f) * 2.0f) - 1;
 
-            float[] window = new float[(this.myOrder / 2) + 1];
-            float[] coEff = new float[this.myOrder + 1];
+            float[] window = new float[(this.myOrder / 2) + 1];  // Оконная функция
+            float[] coEff = new float[this.myOrder + 1];  // Коэффициенты фильтра
             float ps;
             float pe;
             const float PI = (float)System.Math.PI;
             int o2 = this.myOrder / 2;
 
-            // Switch based on algorithm
+            // Переключаемся в зависимости от алгоритма
             switch (alg)
             {
                 case Algorithm.Kaiser:
-                    // Kaiser Window function
+                    // Оконная функция Кайзера
                     for (int i = 1; i <= o2; i++)
                     {
                         window[i] = Bessel(this.myAlpha * (float)System.Math.Sqrt(1.0f - (float)System.Math.Pow((float)i / o2, 2))) / Bessel(this.myAlpha);
                     }
 
-                    // Stopband attenuation and transition band should be set by the user
+                    // Ослабление в полосе подавления и полоса перехода должны быть установлены пользователем
                     break;
 
                 case Algorithm.Hann:
-                    // Hann window function
+                    // Оконная функция Ханна
                     for (int i = 1; i <= o2; i++)
                     {
                         window[i] = 0.5f + 0.5f * (float)System.Math.Cos((PI / (o2 + 1)) * i);
                     }
 
-                    // Set the min stopband attenuation
+                    // Устанавливаем минимальное ослабление в полосе подавления
                     this.StopBandAttenuation = 44.0f;
 
-                    // Set the transition band
+                    // Устанавливаем полосу перехода
                     this.TransitionBand = 6.22f * this.myFS / this.myOrder;
                     break;
 
                 case Algorithm.Hamming:
-                    // Hamming window function
+                    // Оконная функция Хэмминга
                     for (int i = 1; i <= o2; i++)
                     {
                         window[i] = 0.54f + 0.46f * (float)System.Math.Cos((PI / o2) * i);
                     }
 
-                    // Set the min stopband attenuation
+                    // Устанавливаем минимальное ослабление в полосе подавления
                     this.StopBandAttenuation = 53.0f;
 
-                    // Set the transition band
+                    // Устанавливаем полосу перехода
                     this.TransitionBand = 6.64f * this.myFS / this.myOrder;
                     break;
 
                 case Algorithm.Blackman:
-                    // Blackman window function
+                    // Оконная функция Блэкмана
                     for (int i = 1; i <= o2; i++)
                     {
                         window[i] = 0.42f + 0.5f * (float)Math.Cos((PI / o2) * i) + 0.08f * (float)Math.Cos(2.0f * (PI / o2) * i);
                     }
 
-                    // Set the min stopband attenuation
+                    // Устанавливаем минимальное ослабление в полосе подавления
                     this.StopBandAttenuation = 74.0f;
 
-                    // Set the transition band
+                    // Устанавливаем полосу перехода
                     this.TransitionBand = 11.13f * this.myFS / this.myOrder;
                     break;
 
                 case Algorithm.Rectangular:
-                    // Rectangular window function
+                    // Прямоугольная оконная функция
                     for (int i = 1; i <= o2; i++)
                     {
                         window[i] = 1.0f;
                     }
 
-                    // Set the min stopband attenuation
+                    // Устанавливаем минимальное ослабление в полосе подавления
                     this.StopBandAttenuation = 21.0f;
 
-                    // Set the transition band
+                    // Устанавливаем полосу перехода
                     this.TransitionBand = 1.84f * this.myFS / this.myOrder;
                     break;
 
                 default:
-                    // Zero all values if nothing was set (error)
+                    // Обнуляем все значения, если ничего не было установлено (ошибка)
                     for (int i = 1; i <= o2; i++)
                     {
                         window[i] = 0.0f;
@@ -268,7 +262,7 @@ namespace SoundComparer.DigitalFilter
                     break;
             }
 
-            // Switch based on filtertype
+            // Переключаемся в зависимости от типа фильтра
             switch (filterType)
             {
                 case FilterType.BandPass:
@@ -292,16 +286,16 @@ namespace SoundComparer.DigitalFilter
                     break;
             }
 
-            // Set first coefficient value
+            // Устанавливаем первое значение коэффициента
             coEff[0] = pe / PI;
 
-            // Calculate coefficientsw
+            // Вычисляем остальные коэффициенты
             for (int i = 1; i <= o2; i++)
             {
-                coEff[i] = window[i] * (float)System.Math.Sin(i * pe) * (float)System.Math.Cos(i * ps)  / (i * PI);
+                coEff[i] = window[i] * (float)System.Math.Sin(i * pe) * (float)System.Math.Cos(i * ps) / (i * PI);
             }
 
-            // Shift Impulse
+            // Смещаем импульс
             for (int i = o2 + 1; i <= this.myOrder; i++)
             {
                 coEff[i] = coEff[i - o2];

@@ -3,52 +3,57 @@ using System;
 namespace SoundComparer.DigitalFilter
 {
     /// <summary>
-    /// Helper class which implements the filtering functions. Currently Low Pass, High Pass and
-    /// Band Pass are implemented.
+    /// Вспомогательный класс, который реализует функции фильтрации. В настоящее время
+    /// реализованы низкочастотный, высокочастотный и полосовой фильтры.
     /// </summary>
     class FIRFilters
     {
         #region Members
 
         /// <summary>
-        /// The number of samples is the same as the number of points
+        /// Количество отсчетов такое же, как и количество точек
         /// </summary>
         private int mySamples;
 
         /// <summary>
-        /// Holds the coefficient from the window function
+        /// Массив коэффициентов оконной функции
         /// </summary>
         private float[] myCoeff;
 
         /// <summary>
-        /// Holds the series which has the input data
+        /// Массив, который содержит входные данные
         /// </summary>
         private float[] myInputSeries;
 
         /// <summary>
-        /// FFT algorithm object
+        /// Объект для выполнения алгоритма БПФ (быстрого преобразования Фурье)
         /// </summary>
         private FFT myFFT;
 
         /// <summary>
-        /// Holds the current algorithm selected. Enumeration type is drawn from the FFT object.
+        /// Текущий выбранный алгоритм. Тип перечисления взят из объекта БПФ.
         /// </summary>
         public FFT.Algorithm CurrentAlgorithm;
+
+        /// <summary>
+        /// Текущий тип фильтра
+        /// </summary>
         public FFT.FilterType CurrentFilter;
-        private float myFreqFrom;
-        private float myFreqTo;
-        private float myAttenuation;
-        private float myBand;
-        private float myAlpha;
-        private int myTaps;
-        private int myOrder;
+
+        private float myFreqFrom;   // Частота начала полосы пропускания
+        private float myFreqTo;     // Частота конца полосы пропускания
+        private float myAttenuation; // Ослабление в полосе подавления
+        private float myBand;        // Полоса перехода
+        private float myAlpha;       // Параметр альфа для оконной функции Кайзера
+        private int myTaps;          // Количество отсчетов
+        private int myOrder;         // Порядок фильтра (должен быть четным)
 
         #endregion // Members
 
         #region Properties
 
         /// <summary>
-        /// The starting passband frequency, must be lower than ending frequency.
+        /// Частота начала полосы пропускания, должна быть ниже частоты окончания.
         /// </summary>
         public float FreqFrom
         {
@@ -57,7 +62,7 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// The ending passband frequency, must be higher than starting frequency.
+        /// Частота окончания полосы пропускания, должна быть выше частоты начала.
         /// </summary>
         public float FreqTo
         {
@@ -66,43 +71,46 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Stopband attenuation
+        /// Ослабление в полосе подавления
         /// </summary>
         public float StopBandAttenuation
         {
             get { return myAttenuation; }
-            set {
-                    myAttenuation = value;
-                    this.myFFT.StopBandAttenuation = myAttenuation;
-                }
+            set
+            {
+                myAttenuation = value;
+                this.myFFT.StopBandAttenuation = myAttenuation;
+            }
         }
 
         /// <summary>
-        /// Transition band
+        /// Полоса перехода
         /// </summary>
         public float TransitionBand
         {
             get { return myBand; }
-            set {
-                    myBand = value;
-                    this.myFFT.TransitionBand = myBand;
-                }
+            set
+            {
+                myBand = value;
+                this.myFFT.TransitionBand = myBand;
+            }
         }
 
         /// <summary>
-        /// Alpha value used for the Kaiser algorithm.
+        /// Параметр альфа для алгоритма Кайзера.
         /// </summary>
         public float Alpha
         {
             get { return myAlpha; }
-            set {
-                    myAlpha = value;
-                    this.myFFT.Alpha = myAlpha;
-                }
+            set
+            {
+                myAlpha = value;
+                this.myFFT.Alpha = myAlpha;
+            }
         }
 
         /// <summary>
-        /// Number of taps to be used. Taps is the number of samples processed at any one time.
+        /// Количество отсчетов (taps), которое используется. Это количество выборок, обрабатываемых за раз.
         /// </summary>
         public int Taps
         {
@@ -111,21 +119,21 @@ namespace SoundComparer.DigitalFilter
         }
 
         /// <summary>
-        /// Filter order. Must be an even number.
+        /// Порядок фильтра. Должен быть четным числом.
         /// </summary>
         public int Order
         {
             get { return myOrder; }
             set
             {
-                // Assure value is even
+                // Убедиться, что значение четное
                 if ((value % 2) == 0)
                 {
                     myOrder = value;
                     this.myFFT.Order = myOrder;
                 }
                 else
-                    throw new ArgumentOutOfRangeException("Order", "Filter order must be an even number.");
+                    throw new ArgumentOutOfRangeException("Order", "Порядок фильтра должен быть четным числом.");
             }
         }
 
@@ -134,17 +142,17 @@ namespace SoundComparer.DigitalFilter
         #region Constructors
 
         /// <summary>
-        /// Main constructor. Resets all settings within the FFT algorithm object.
+        /// Основной конструктор. Сбрасывает все настройки внутри объекта БПФ.
         /// </summary>
         public FIRFilters()
         {
-            // Create a new FFT object
+            // Создаем новый объект для БПФ
             this.myFFT = new FFT();
 
-            // Default algorithm to Kaiser
+            // Алгоритм по умолчанию — Кайзер
             this.CurrentAlgorithm = FFT.Algorithm.Kaiser;
 
-            // Default taps to 35
+            // Количество отсчетов по умолчанию равно 35
             this.myTaps = 35;
         }
 
@@ -153,13 +161,12 @@ namespace SoundComparer.DigitalFilter
         #region Methods
 
         /// <summary>
-        /// Performs a low pass filter. Output series will be cleared before being
-        /// output to. If passband start and end frequencies are left at 0, defaults are used.
+        /// Выполняет низкочастотный фильтр. Выходной массив будет очищен перед записью в него данных.
+        /// Если начальные и конечные частоты полосы пропускания равны 0, используются значения по умолчанию.
         /// </summary>
         public void LowPassFilter(ref float[] iseries)
         {
-            // If no start and end frequencies are specified, default low pass frequency range to:
-            // 0 - 1000hz
+            // Если не заданы начальные и конечные частоты, используем диапазон по умолчанию 0 - 1000 Гц
             if (this.myFreqFrom == 0.0f && this.myFreqTo == 0.0f)
             {
                 this.myFFT.FreqFrom = 0.0f;
@@ -171,25 +178,28 @@ namespace SoundComparer.DigitalFilter
                 this.myFFT.FreqTo = this.myFreqTo;
             }
 
-            // Filter the series based on the coefficients generated
+            // Применяем фильтр к серии данных на основе сгенерированных коэффициентов
             Filter(ref iseries);
         }
 
+        /// <summary>
+        /// Вычисляет коэффициенты фильтра в зависимости от выбранного алгоритма и типа фильтра.
+        /// </summary>
         public void CalculateCoefficients(FFT.Algorithm algorithm, FFT.FilterType filter)
         {
-            // Generate the actual coefficients
+            // Генерируем коэффициенты
             this.CurrentAlgorithm = algorithm;
             this.CurrentFilter = filter;
             if (algorithm == FFT.Algorithm.Kaiser)
             {
-                
-                // For kaiser window function we need to set the attentuation
+                // Для оконной функции Кайзера необходимо задать ослабление
                 this.StopBandAttenuation = 60;
 
-                // Kaiser also requires transition band
+                // Также требуется задать полосу перехода
                 this.TransitionBand = 500;
             }
 
+            // Если частоты не заданы, используем значения по умолчанию 1000 Гц
             if (this.myFreqFrom == 0.0f && this.myFreqTo == 0.0f)
             {
                 this.myFFT.FreqFrom = 1000;
@@ -200,18 +210,18 @@ namespace SoundComparer.DigitalFilter
                 this.myFFT.FreqFrom = this.myFreqFrom;
                 this.myFFT.FreqTo = this.myFreqTo;
             }
-   
-            this.myCoeff = this.myFFT.GenerateCoefficients(this.CurrentFilter,this.CurrentAlgorithm);
+
+            // Генерируем коэффициенты
+            this.myCoeff = this.myFFT.GenerateCoefficients(this.CurrentFilter, this.CurrentAlgorithm);
         }
 
         /// <summary>
-        /// Performs a high pass filter. Output series will be cleared before being
-        /// output to. If passband start and end frequencies are left at 0, defaults are used.
+        /// Выполняет высокочастотный фильтр. Выходной массив будет очищен перед записью в него данных.
+        /// Если начальные и конечные частоты полосы пропускания равны 0, используются значения по умолчанию.
         /// </summary>
         public void HighPassFilter(ref float[] iseries)
         {
-            // If no start and end frequencies are specified, default high pass frequency range to:
-            // 2000 - 4000hz
+            // Если не заданы начальные и конечные частоты, используем диапазон по умолчанию 2000 - 4000 Гц
             if (this.myFreqFrom == 0.0f && this.myFreqTo == 0.0f)
             {
                 this.myFFT.FreqFrom = 2000.0f;
@@ -223,18 +233,17 @@ namespace SoundComparer.DigitalFilter
                 this.myFFT.FreqTo = this.myFreqTo;
             }
 
-            // Filter the series based on the coefficients generated
+            // Применяем фильтр к серии данных на основе сгенерированных коэффициентов
             Filter(ref iseries);
         }
 
         /// <summary>
-        /// Performs a band pass filter. Output series will be cleared before being
-        /// output to. If passband start and end frequencies are left at 0, defaults are used.
+        /// Выполняет полосовой фильтр. Выходной массив будет очищен перед записью в него данных.
+        /// Если начальные и конечные частоты полосы пропускания равны 0, используются значения по умолчанию.
         /// </summary>
         public void BandPassFilter(ref float[] iseries)
         {
-            // If no start and end frequencies are specified, default band pass frequency range to:
-            // 1000 - 1000hz
+            // Если не заданы начальные и конечные частоты, используем диапазон по умолчанию 1000 - 1000 Гц
             if (this.myFreqFrom == 0.0f && this.myFreqTo == 0.0f)
             {
                 this.myFFT.FreqFrom = 1000;
@@ -246,7 +255,7 @@ namespace SoundComparer.DigitalFilter
                 this.myFFT.FreqTo = this.myFreqTo;
             }
 
-            // Filter the series based on the coefficients generated
+            // Применяем фильтр к серии данных на основе сгенерированных коэффициентов
             Filter(ref iseries);
         }
 
@@ -255,16 +264,14 @@ namespace SoundComparer.DigitalFilter
         #region Initialization
 
         /// <summary>
-        /// Initializes the FIRFilters object by setting the input and output series members for use
-        /// by the filter.
+        /// Инициализирует объект FIRFilters, устанавливая входные данные для использования фильтром.
         /// </summary>
-        /// <param name="iseries">Input series that contains input data</param>
-        /// <param name="oseries">Output series to which filter will be written</param>
-        private void SetIOSeries(float[]  iseries)
+        /// <param name="iseries">Входные данные, содержащие исходные данные</param>
+        private void SetIOSeries(float[] iseries)
         {
             this.myInputSeries = iseries;
 
-            // Samples is the number of points contained in the input
+            // Количество отсчетов — это количество точек, содержащихся во входных данных
             this.mySamples = myInputSeries.Length;
         }
 
@@ -273,31 +280,30 @@ namespace SoundComparer.DigitalFilter
         #region Filter
 
         /// <summary>
-        /// Performs the actual filter. Coefficients should have already be generated by the calling
-        /// function, this function merely applies them and physically adds the points to the output series.
+        /// Выполняет саму фильтрацию. Коэффициенты должны быть заранее сгенерированы вызывающей функцией,
+        /// данная функция просто применяет их и добавляет точки в выходной массив.
         /// </summary>
         private void Filter(ref float[] iseries)
         {
-            float[] x = new float[myTaps];
-            float y; 
-            
-            // Set the series
+            float[] x = new float[myTaps];  // Вспомогательный массив для хранения выборок
+            float y;  // Переменная для накопления суммы результата фильтрации
+
+            // Устанавливаем входную серию данных
             SetIOSeries(iseries);
 
-            // Initialize x
+            // Инициализируем массив x нулями
             for (int i = 1; i < myTaps; i++)
                 x[i] = 0.0f;
 
-            // Loop through every data point
+            // Цикл по каждой точке входной серии данных
             for (int i = 0; i < iseries.Length; i++)
             {
-                // Initialize y
-                y = 0.0f;
+                y = 0.0f;  // Инициализируем накопитель суммы
 
-                // Obtain the data value (Y value) at the specified X value (i)
+                // Получаем текущее значение данных
                 x[0] = Convert.ToSingle(iseries[i]);
 
-                // Loop through from 0 to number of taps and calculate the sum
+                // Цикл по коэффициентам фильтра и расчёт суммы произведений
                 try
                 {
                     for (int j = 0; j < myTaps; j++)
@@ -305,16 +311,16 @@ namespace SoundComparer.DigitalFilter
                 }
                 catch (Exception e)
                 {
-                    System.Diagnostics.Debug.WriteLine(e.Message + " Check filter order.");
+                    System.Diagnostics.Debug.WriteLine(e.Message + " Проверьте порядок фильтра.");
                     throw e;
                 }
 
-                // Shift all x values by 1 to the right
+                // Сдвигаем значения в массиве x вправо
                 for (int j = myTaps - 1; j > 0; j--)
                     x[j] = x[j - 1];
 
-                // Add the y value to the output series at the current x value
-                iseries[i]=y;
+                // Записываем результат в исходный массив на текущее значение x
+                iseries[i] = y;
             }
         }
 

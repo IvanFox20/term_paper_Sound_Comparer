@@ -31,14 +31,11 @@ namespace SoundComparer
             {
                 try
                 {
-                    // Process wave control
                     wc = new WaveControl();
                     wc.Name = ofdSound.FileName;
                     LastPath = Path.GetDirectoryName(ofdSound.FileName);
                     wc.Read(wc, ofdSound.FileName, pbSound1);
                     wc.Refresh();
-
-                    // Add wave result
                     pSound1.Controls.Clear();
                     pSound1.Controls.Add(wc);
                 }
@@ -124,7 +121,6 @@ namespace SoundComparer
 
                 try
                 {
-                    // Compare 2 ware controls
                     float accuracy = wc2.Sound.Compare(wc.Sound);
                     lbAnalyze.Text = "Accuracy = " + accuracy + "%";
                 }
